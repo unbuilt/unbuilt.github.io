@@ -4,8 +4,8 @@ Jian Miao
 unbuilt@outlook.com             
 
 Experience and skills Summary
-	More than years software development experience and 2 years project management in domestic company, start-up and international company.
-	Experience in Client/Server application, machine learning system and online services. Focused in virtual personal assiatant in last 4 years.
+	More than 10 years software development experience and 2 years project management in domestic company, start-up and international company.
+	Experiences in Client/Server application, machine learning system and online services. Focused in virtual personal assiatant in last 4 years.
 	Knowledge of principles and techniques of NLP.
 	Hands-on experience of C/C++, Python, C# and Delphi.
 	Familiar with software development process and tools such as automation, testing.
