@@ -3,10 +3,10 @@
   <channel>
     <title>HA507</title>
     <description></description>
-    <link>/</link>
-    <atom:link href="/feed.xml" rel="self" type="application/rss+xml"/>
-    <pubDate>Sun, 09 Dec 2018 16:19:46 +0800</pubDate>
-    <lastBuildDate>Sun, 09 Dec 2018 16:19:46 +0800</lastBuildDate>
+    <link>/siteha507/</link>
+    <atom:link href="/siteha507/feed.xml" rel="self" type="application/rss+xml"/>
+    <pubDate>Sun, 09 Dec 2018 16:34:59 +0800</pubDate>
+    <lastBuildDate>Sun, 09 Dec 2018 16:34:59 +0800</lastBuildDate>
     <generator>Jekyll v3.0.1</generator>
     
       <item>
@@ -220,8 +220,8 @@
 &lt;/ul&gt;
 </description>
         <pubDate>Sun, 09 Dec 2018 15:40:09 +0800</pubDate>
-        <link>/software-design/2018/12/09/PoSD.html</link>
-        <guid isPermaLink="true">/software-design/2018/12/09/PoSD.html</guid>
+        <link>/siteha507/software-design/2018/12/09/PoSD.html</link>
+        <guid isPermaLink="true">/siteha507/software-design/2018/12/09/PoSD.html</guid>
         
         
         <category>software-design</category>
