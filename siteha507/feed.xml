@@ -5,15 +5,15 @@
     <description></description>
     <link>/siteha507/</link>
     <atom:link href="/siteha507/feed.xml" rel="self" type="application/rss+xml"/>
-    <pubDate>Sun, 09 Dec 2018 16:34:59 +0800</pubDate>
-    <lastBuildDate>Sun, 09 Dec 2018 16:34:59 +0800</lastBuildDate>
+    <pubDate>Sun, 09 Dec 2018 16:54:11 +0800</pubDate>
+    <lastBuildDate>Sun, 09 Dec 2018 16:54:11 +0800</lastBuildDate>
     <generator>Jekyll v3.0.1</generator>
     
       <item>
         <title>Notes on A Philosophy of Software Design</title>
-        <description>&lt;p&gt;A Philosophy of Software Design 是 &lt;a href=&quot;https://web.stanford.edu/~ouster/cgi-bin/home.php&quot;&gt;John Ousterhout&lt;/a&gt; 教授以讲授&lt;a href=&quot;http://www.stanford.edu/~ouster/cgi-bin/cs190-winter18/index.php&quot;&gt;CS 190 (Software Design Studio)&lt;/a&gt; 这门课为基础写成的。这本书比较薄，只有170多页，却分了21章，涵盖的内容不少，总体介绍了软件设计中的复杂性，以及软件设计中降低代码复杂性的一些原则和技巧。书比较薄，部分内容是比较抽象的描述，读起来略显啰嗦。所以，阅读一遍课程材料是一个不错的选择。&lt;/p&gt;
+        <description>&lt;p&gt;A Philosophy of Software Design 是Stanford的 &lt;a href=&quot;https://web.stanford.edu/~ouster/cgi-bin/home.php&quot;&gt;John Ousterhout&lt;/a&gt; 教授以讲授&lt;a href=&quot;http://www.stanford.edu/~ouster/cgi-bin/cs190-winter18/index.php&quot;&gt;CS 190 (Software Design Studio)&lt;/a&gt; 这门课为基础写成的。这本书比较薄，只有170多页，却分了21章，涵盖的内容不少，总体介绍了软件设计中的复杂性，以及软件设计中降低代码复杂性的一些原则和技巧。另外，阅读一遍课程材料是一个不错的选择。&lt;/p&gt;
 
-&lt;p&gt;个人觉得，如果对下面的摘要比较了解，可以举出相应的例子，这本书是值得一读的。否则，推荐先看一下_Code Complete_ 和 &lt;em&gt;Rapid Development&lt;/em&gt; （都是上个世纪的书）。&lt;/p&gt;
+&lt;p&gt;个人觉得，如果对下面的摘要比较了解，可以举出相应的例子，这本书是值得一读的。否则，推荐先看一下 &lt;em&gt;Code Complete&lt;/em&gt; 和 &lt;em&gt;Rapid Development&lt;/em&gt; （都是上个世纪的书）。&lt;/p&gt;
 
 &lt;p&gt;其实命名是一个很好的指标，如果能为代码中的每个变量、函数、类、库起一个清晰且准确的名字，应该形成一个好的设计了。&lt;/p&gt;
 
@@ -115,11 +115,14 @@
 
 &lt;h1 id=&quot;ch12-why-write-comments-the-four-excuses&quot;&gt;CH12 Why Write Comments? The Four Excuses&lt;/h1&gt;
 
-&lt;p&gt;不写注释的四个理由：
-* 好代码本身就是文档。
-* 没有时间写注释。
-* 注释会过时并引起误解。
-* 我所见过的注释都没用。&lt;/p&gt;
+&lt;p&gt;不写注释的四个理由：&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;好代码本身就是文档。&lt;/li&gt;
+  &lt;li&gt;没有时间写注释。&lt;/li&gt;
+  &lt;li&gt;注释会过时并引起误解。&lt;/li&gt;
+  &lt;li&gt;我所见过的注释都没用。&lt;/li&gt;
+&lt;/ul&gt;
 
 &lt;p&gt;注释的作用是记录那些软件设计时无法写在代码里的想法。&lt;/p&gt;
 

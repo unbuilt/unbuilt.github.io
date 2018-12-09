@@ -7,7 +7,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   <title>Notes on A Philosophy of Software Design</title>
-  <meta name="description" content="A Philosophy of Software Design 是 John Ousterhout 教授以讲授CS 190 (Software Design Studio) 这门课为基础写成的。这本书比较薄，只有170多页，却分了21章，涵盖的内容不少，总体介绍了软件设计中的复杂性，以及软件设计中降低代码复杂性的...">
+  <meta name="description" content="A Philosophy of Software Design 是Stanford的 John Ousterhout 教授以讲授CS 190 (Software Design Studio) 这门课为基础写成的。这本书比较薄，只有170多页，却分了21章，涵盖的内容不少，总体介绍了软件设计中的复杂性，以及软件设计...">
 
   <link rel="stylesheet" href="/siteha507/css/main.css">
   <link rel="canonical" href="/siteha507/software-design/2018/12/09/PoSD.html">
@@ -62,9 +62,9 @@
   </header>
 
   <div class="post-content" itemprop="articleBody">
-    <p>A Philosophy of Software Design 是 <a href="https://web.stanford.edu/~ouster/cgi-bin/home.php">John Ousterhout</a> 教授以讲授<a href="http://www.stanford.edu/~ouster/cgi-bin/cs190-winter18/index.php">CS 190 (Software Design Studio)</a> 这门课为基础写成的。这本书比较薄，只有170多页，却分了21章，涵盖的内容不少，总体介绍了软件设计中的复杂性，以及软件设计中降低代码复杂性的一些原则和技巧。书比较薄，部分内容是比较抽象的描述，读起来略显啰嗦。所以，阅读一遍课程材料是一个不错的选择。</p>
+    <p>A Philosophy of Software Design 是Stanford的 <a href="https://web.stanford.edu/~ouster/cgi-bin/home.php">John Ousterhout</a> 教授以讲授<a href="http://www.stanford.edu/~ouster/cgi-bin/cs190-winter18/index.php">CS 190 (Software Design Studio)</a> 这门课为基础写成的。这本书比较薄，只有170多页，却分了21章，涵盖的内容不少，总体介绍了软件设计中的复杂性，以及软件设计中降低代码复杂性的一些原则和技巧。另外，阅读一遍课程材料是一个不错的选择。</p>
 
-<p>个人觉得，如果对下面的摘要比较了解，可以举出相应的例子，这本书是值得一读的。否则，推荐先看一下_Code Complete_ 和 <em>Rapid Development</em> （都是上个世纪的书）。</p>
+<p>个人觉得，如果对下面的摘要比较了解，可以举出相应的例子，这本书是值得一读的。否则，推荐先看一下 <em>Code Complete</em> 和 <em>Rapid Development</em> （都是上个世纪的书）。</p>
 
 <p>其实命名是一个很好的指标，如果能为代码中的每个变量、函数、类、库起一个清晰且准确的名字，应该形成一个好的设计了。</p>
 
@@ -166,11 +166,14 @@
 
 <h1 id="ch12-why-write-comments-the-four-excuses">CH12 Why Write Comments? The Four Excuses</h1>
 
-<p>不写注释的四个理由：
-* 好代码本身就是文档。
-* 没有时间写注释。
-* 注释会过时并引起误解。
-* 我所见过的注释都没用。</p>
+<p>不写注释的四个理由：</p>
+
+<ul>
+  <li>好代码本身就是文档。</li>
+  <li>没有时间写注释。</li>
+  <li>注释会过时并引起误解。</li>
+  <li>我所见过的注释都没用。</li>
+</ul>
 
 <p>注释的作用是记录那些软件设计时无法写在代码里的想法。</p>
 
