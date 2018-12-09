@@ -1,0 +1,232 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>HA507</title>
+    <description></description>
+    <link>/</link>
+    <atom:link href="/feed.xml" rel="self" type="application/rss+xml"/>
+    <pubDate>Sun, 09 Dec 2018 16:19:46 +0800</pubDate>
+    <lastBuildDate>Sun, 09 Dec 2018 16:19:46 +0800</lastBuildDate>
+    <generator>Jekyll v3.0.1</generator>
+    
+      <item>
+        <title>Notes on A Philosophy of Software Design</title>
+        <description>&lt;p&gt;A Philosophy of Software Design 是 &lt;a href=&quot;https://web.stanford.edu/~ouster/cgi-bin/home.php&quot;&gt;John Ousterhout&lt;/a&gt; 教授以讲授&lt;a href=&quot;http://www.stanford.edu/~ouster/cgi-bin/cs190-winter18/index.php&quot;&gt;CS 190 (Software Design Studio)&lt;/a&gt; 这门课为基础写成的。这本书比较薄，只有170多页，却分了21章，涵盖的内容不少，总体介绍了软件设计中的复杂性，以及软件设计中降低代码复杂性的一些原则和技巧。书比较薄，部分内容是比较抽象的描述，读起来略显啰嗦。所以，阅读一遍课程材料是一个不错的选择。&lt;/p&gt;
+
+&lt;p&gt;个人觉得，如果对下面的摘要比较了解，可以举出相应的例子，这本书是值得一读的。否则，推荐先看一下_Code Complete_ 和 &lt;em&gt;Rapid Development&lt;/em&gt; （都是上个世纪的书）。&lt;/p&gt;
+
+&lt;p&gt;其实命名是一个很好的指标，如果能为代码中的每个变量、函数、类、库起一个清晰且准确的名字，应该形成一个好的设计了。&lt;/p&gt;
+
+&lt;h1 id=&quot;ch1-introduction&quot;&gt;CH1 Introduction&lt;/h1&gt;
+
+&lt;p&gt;两种方法可以应对软件开发中的复杂性。&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;一种是通过让代码变得简单且显而易见来去除复杂性；&lt;/li&gt;
+  &lt;li&gt;另一种是对复杂性进行封装，以使程序员不必面对所有的复杂性。&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;提升软件设计技巧的方法是在开发中发现设计问题，在下一个迭代周期中改进设计（现在大多数软件项目使用敏捷开发等渐进式方法）。&lt;/p&gt;
+
+&lt;h1 id=&quot;ch2-the-nature-of-complexity&quot;&gt;CH2 The Nature of Complexity&lt;/h1&gt;
+
+&lt;p&gt;&lt;strong&gt;Complexity&lt;/strong&gt; is anything related to the structure of a software system that makes it hard to understand and modify the system.&lt;/p&gt;
+
+&lt;p&gt;复杂性是使一个软件系统难以理解及修改的任何结构性的东西。&lt;/p&gt;
+
+&lt;p&gt;复杂性的症状&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;变动的扩大化：一个简单的变动需要在很多不同的地方修改代码。&lt;/li&gt;
+  &lt;li&gt;认知的负担：开发人员为完成一个开发任务需要知道多少信息。&lt;/li&gt;
+  &lt;li&gt;未知的未知：为了完成一个开发任务需要改动多少代码或者需要知道哪些信息并不明确。&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;复杂性的来源是依赖与晦涩。&lt;/p&gt;
+
+&lt;p&gt;复杂性是积累起来的，所以要采取零容忍的态度。&lt;/p&gt;
+
+&lt;h1 id=&quot;ch3-working-code-isnt-enough&quot;&gt;CH3 Working Code Isn’t Enough&lt;/h1&gt;
+
+&lt;p&gt;不仅要完成开发任务，而且要形成好的设计。&lt;/p&gt;
+
+&lt;h1 id=&quot;ch4-modules-should-be-deep&quot;&gt;CH4 Modules Should Be Deep&lt;/h1&gt;
+
+&lt;p&gt;管理软件复杂度的一种方法是模块化设计。模块可能是类、单元或者函数等，模块的接口与实现分离，模块的接口尽可能简单。&lt;/p&gt;
+
+&lt;p&gt;模块的接口包含两种信息，正式的和非正式的。&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;正式的接口是在代码中明确指定的，例如类的接口或函数签名等。&lt;/li&gt;
+  &lt;li&gt;非正式接口是那些没有或者不能由程序语言指定或者强制的内容，比如类中的一个函数必须在另一个函数前调用。&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;抽象是一个实体的简化后的视角，它忽略了那些不重要的细节。&lt;/p&gt;
+
+&lt;p&gt;深模块：接口简单但是功能强大的模块，例如Unix系统中的I/O机制。&lt;/p&gt;
+
+&lt;p&gt;浅模块：接口与功能相比相对复杂，例如单链表类。浅模块有时是难避免的，但是它们不会对管理复杂性有多少帮助。&lt;/p&gt;
+
+&lt;h1 id=&quot;ch5-information-hiding-and-leakage&quot;&gt;CH5 Information Hiding (and Leakage)&lt;/h1&gt;
+
+&lt;p&gt;信息隐藏是实现深模块的最重要的方法。模块应当封装知识，使其存在于模块实现中，而不出现在模块接口中。&lt;/p&gt;
+
+&lt;h1 id=&quot;ch6-general-purpose-modules-are-deeper&quot;&gt;CH6 General-Purpose Modules are Deeper&lt;/h1&gt;
+
+&lt;p&gt;模块应具有一定的通用性，通用性也意味着更好的信息隐藏。&lt;/p&gt;
+
+&lt;p&gt;在平衡模块的通用性与专用性时，可以问自己以下问题：&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;为了实现当前需要最简单的接口是什么？&lt;/li&gt;
+  &lt;li&gt;在什么情况下这些方法会被用到？&lt;/li&gt;
+  &lt;li&gt;这个API对当前的需要使用起来是否简便？&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h1 id=&quot;ch7-different-layer-different-abstraction&quot;&gt;CH7 Different Layer, Different Abstraction&lt;/h1&gt;
+
+&lt;p&gt;层层传递的方法是红灯，最好找替代方案，例如把层次压缩合并到一起。&lt;/p&gt;
+
+&lt;p&gt;层层传递的变量（通常较多且很可能增加新的），可能通过共享对象、全局变量或者上下文对象来处理。&lt;/p&gt;
+
+&lt;h1 id=&quot;ch8-pull-complexity-downwards&quot;&gt;CH8 Pull Complexity Downwards&lt;/h1&gt;
+
+&lt;p&gt;对于一个模块来说，接口的简单性远比实现的简单性来得重要。所以尽量让复杂性下沉到实现中。例如，尽量在实现中采用默认配置，少让接口的用户进行配置；要问自己，上层模块或者接口的用户是否真的更清楚如何设定配置参数。&lt;/p&gt;
+
+&lt;h1 id=&quot;ch9-better-together-or-better-apart&quot;&gt;CH9 Better Together Or Better Apart?&lt;/h1&gt;
+&lt;p&gt;软件设计中的一个基本问题是，对于两组可能相关的两组功能，是把它们分开在两个地方实现，还是放在一起。&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;如果信息量共享的，就放在一起。&lt;/li&gt;
+  &lt;li&gt;如果可以简化接口，就放在一起。&lt;/li&gt;
+  &lt;li&gt;如果可以去除重复，就放在一起。&lt;/li&gt;
+  &lt;li&gt;把通用性和专用性的代码分开。例如对于undo功能的实现，可以分为管理历史操作的通用性机制模块，以及实现回退操作的专用性模块。&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h1 id=&quot;ch10-define-errors-out-of-existence&quot;&gt;CH10 Define Errors Out Of Existence&lt;/h1&gt;
+
+&lt;p&gt;抛出异常增加了程序的复杂性。&lt;/p&gt;
+
+&lt;p&gt;抛出异常的时候要问自己：外层调用者是否可以更好的处理异常，否则，尽量在内部处理。&lt;/p&gt;
+
+&lt;h1 id=&quot;ch11-design-it-twice&quot;&gt;CH11 Design it Twice&lt;/h1&gt;
+
+&lt;p&gt;设计时除了第一时间出现的方案，要认真设计一个替代方案进行比较。由于大多数人都很相信自己的第一方案，所以这一方法有时候很难。这种方法除了可以提升设计外，还可以提升你的设计技巧。&lt;/p&gt;
+
+&lt;h1 id=&quot;ch12-why-write-comments-the-four-excuses&quot;&gt;CH12 Why Write Comments? The Four Excuses&lt;/h1&gt;
+
+&lt;p&gt;不写注释的四个理由：
+* 好代码本身就是文档。
+* 没有时间写注释。
+* 注释会过时并引起误解。
+* 我所见过的注释都没用。&lt;/p&gt;
+
+&lt;p&gt;注释的作用是记录那些软件设计时无法写在代码里的想法。&lt;/p&gt;
+
+&lt;h1 id=&quot;ch13-comments-should-describe-things-that-arent-obvious-from-the-code&quot;&gt;CH13 Comments Should Describe Things that Aren’t Obvious from the Code&lt;/h1&gt;
+
+&lt;p&gt;注释应该描述那些不能从代码中显而易见的看到的东西。&lt;/p&gt;
+
+&lt;p&gt;其他人可以不看代码从注释中就理解模块提供的抽象。&lt;/p&gt;
+
+&lt;p&gt;注释不要去重复代码。&lt;/p&gt;
+
+&lt;p&gt;低层注释为代码增加精确性。例如边界是否包涵在操作范围内。&lt;/p&gt;
+
+&lt;p&gt;高层注释为代码增加直观性，提供对于代码目的和结构的说明。&lt;/p&gt;
+
+&lt;p&gt;如果你希望代码提供一定的抽象，一定会用到注释来描述抽象。&lt;/p&gt;
+
+&lt;p&gt;如果接口的注释需要解释实现的细节，这个模块就是浅模块。&lt;/p&gt;
+
+&lt;p&gt;代码实现的注释主要是帮助代码阅读者理解代码在干什么。&lt;/p&gt;
+
+&lt;h1 id=&quot;ch14-choosing-names&quot;&gt;CH14 Choosing Names&lt;/h1&gt;
+
+&lt;p&gt;名字要准确。不好取名字意味着设计不清晰。&lt;/p&gt;
+
+&lt;h1 id=&quot;ch15-write-the-comments-first&quot;&gt;CH15 Write The Comments First&lt;/h1&gt;
+
+&lt;p&gt;写代码时先写注释，注释是一种设计工具。如果难以写注释，说明设计有问题。&lt;/p&gt;
+
+&lt;h1 id=&quot;ch16-modifying-existing-code&quot;&gt;CH16 Modifying Existing Code&lt;/h1&gt;
+
+&lt;p&gt;每次改动要让设计变得更好。&lt;/p&gt;
+
+&lt;p&gt;提交代码前对比改动并确保变化体现在注释或者文档中，而不是提交日志里。&lt;/p&gt;
+
+&lt;h1 id=&quot;ch17-consistency&quot;&gt;CH17 Consistency&lt;/h1&gt;
+
+&lt;p&gt;要保持命名、代码风格、设计模式的一致性。&lt;/p&gt;
+
+&lt;p&gt;不要改变已有的习惯约定。&lt;/p&gt;
+
+&lt;h1 id=&quot;ch18-code-should-be-obvious&quot;&gt;CH18 Code Should be Obvious&lt;/h1&gt;
+
+&lt;p&gt;代码要尽量清晰，易于理解。良好的格式增加代码的清晰度。&lt;/p&gt;
+
+&lt;p&gt;代码不那么显然时，注释可以使代码清晰。&lt;/p&gt;
+
+&lt;p&gt;使代码不清晰的方式：&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;事件驱动/分派的编程机制&lt;/li&gt;
+  &lt;li&gt;范型容器&lt;/li&gt;
+  &lt;li&gt;声明的类型与分配的不一致&lt;/li&gt;
+  &lt;li&gt;不符合读者预期的代码&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h1 id=&quot;ch19-software-thends&quot;&gt;CH19 Software Thends&lt;/h1&gt;
+
+&lt;p&gt;面向对象编程的一个重要元素是继承。继承分为接口继承和实现继承。实现继承增加了父类和子类之间的依赖。&lt;/p&gt;
+
+&lt;p&gt;面向对象编程/敏捷开发/单元测试/测试驱动开发/设计模式这些技术要合理采用。&lt;/p&gt;
+
+&lt;p&gt;Getter/Setter要尽理避免。&lt;/p&gt;
+
+&lt;h1 id=&quot;ch20-designing-for-performance&quot;&gt;CH20 Designing for Performance&lt;/h1&gt;
+
+&lt;p&gt;过早优化性能降低开发速度。完全不考虑性能问题可能造成后期改进困难。&lt;/p&gt;
+
+&lt;p&gt;对性能保持敏感：&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;网络通信在同一数据中心在10-50微秒，广域网中为10-100毫秒。&lt;/li&gt;
+  &lt;li&gt;磁盘操作在5-10毫秒，闪存为10-100微秒。&lt;/li&gt;
+  &lt;li&gt;动态内存分配会带来分配、释放、垃圾回收等额外操作。&lt;/li&gt;
+  &lt;li&gt;从内存取数据到CPU缓存需要几百个指令周期。对于许多程序的总体性能，缓存失效和计算代价是接近的。&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h1 id=&quot;ch21-conclusion&quot;&gt;CH21 Conclusion&lt;/h1&gt;
+
+&lt;p&gt;复杂性是软件设计的重大挑战。复杂性的原因是依赖和晦涩。花点儿时间进行设计是值得的。&lt;/p&gt;
+
+&lt;h1 id=&quot;red-flags&quot;&gt;Red flags&lt;/h1&gt;
+&lt;ul&gt;
+  &lt;li&gt;Shallow Module&lt;/li&gt;
+  &lt;li&gt;Information Leakage&lt;/li&gt;
+  &lt;li&gt;Temporal Decomposition&lt;/li&gt;
+  &lt;li&gt;Overexposure&lt;/li&gt;
+  &lt;li&gt;Pass-Through Method&lt;/li&gt;
+  &lt;li&gt;Repetition&lt;/li&gt;
+  &lt;li&gt;Specific-General Mixture&lt;/li&gt;
+  &lt;li&gt;Conjoined Methods&lt;/li&gt;
+  &lt;li&gt;Comment Repeats Code&lt;/li&gt;
+  &lt;li&gt;Implementation Documentation Contaminates Interfaces&lt;/li&gt;
+  &lt;li&gt;Vague Name&lt;/li&gt;
+  &lt;li&gt;Hard to Pick Name&lt;/li&gt;
+  &lt;li&gt;Hard to Describe&lt;/li&gt;
+  &lt;li&gt;Nonobvious Code&lt;/li&gt;
+&lt;/ul&gt;
+</description>
+        <pubDate>Sun, 09 Dec 2018 15:40:09 +0800</pubDate>
+        <link>/software-design/2018/12/09/PoSD.html</link>
+        <guid isPermaLink="true">/software-design/2018/12/09/PoSD.html</guid>
+        
+        
+        <category>software-design</category>
+        
+      </item>
+    
+  </channel>
+</rss>
