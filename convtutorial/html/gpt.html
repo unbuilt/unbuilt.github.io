@@ -1,0 +1,353 @@
+
+<!DOCTYPE html>
+
+<html lang="zh_CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+    <title>基于预训练的对话生成 &#8212; 对话系统实践：快速上手  文档</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css" />
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/translations.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <link rel="index" title="索引" href="genindex.html" />
+    <link rel="search" title="搜索" href="search.html" />
+    <link rel="next" title="参考资料" href="reference.html" />
+    <link rel="prev" title="序列到序列生成" href="seq2seq.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="id1">
+<h1>基于预训练的对话生成<a class="headerlink" href="#id1" title="永久链接至标题">¶</a></h1>
+<p>随着深度学习的发展，大规模预训练模型在各种任务上获得了出色的效果。在文本生成上，<code class="docutils literal notranslate"><span class="pre">GPT-2</span></code> <a class="reference internal" href="reference.html#gpt2" id="id2"><span>[GPT2]</span></a> 和 <code class="docutils literal notranslate"><span class="pre">GPT-3</span></code> <a class="reference internal" href="reference.html#gpt3" id="id3"><span>[GPT3]</span></a> 展示出了很大的潜力。基于预训练的对话生成也就应运而生了。</p>
+<p><code class="docutils literal notranslate"><span class="pre">Dialo-GPT</span></code> <a class="reference internal" href="reference.html#dialogpt" id="id4"><span>[DialoGPT]</span></a> 扩展了 <code class="docutils literal notranslate"><span class="pre">GPT-2</span></code> ，用于对话生成。它把对话历史拼接后作为输入，把 <code class="docutils literal notranslate"><span class="pre">GPT-2</span></code> 的输出作为对话的回复。</p>
+<p><code class="docutils literal notranslate"><span class="pre">CDial-GPT</span></code> 同样是基于 <code class="docutils literal notranslate"><span class="pre">GPT-2</span></code> ，在拼接对话历史时加入了 <code class="docutils literal notranslate"><span class="pre">&lt;speaker1&gt;</span></code> 、 <code class="docutils literal notranslate"><span class="pre">&lt;speaker2&gt;</span></code> 等标记。<code class="docutils literal notranslate"><span class="pre">CDial-GPT</span></code> 发布了中文数据集，并提供了模型。本文在多处使用了其数据集。</p>
+<p><code class="docutils literal notranslate"><span class="pre">GPT-2</span></code> 的模型并不复杂，<code class="docutils literal notranslate"><span class="pre">OpenAI</span></code> 给出了 <a class="reference external" href="https://github.com/openai/gpt-2">代码</a> 。
+<a class="reference external" href="https://github.com/karpathy/minGPT">这里</a> 是一个基于PyTorch的极简版本。
+<a class="reference external" href="https://huggingface.co/">Hugging Face</a> 提供的 <code class="docutils literal notranslate"><span class="pre">transformers</span></code> 包是被广泛使用的一个 <code class="docutils literal notranslate"><span class="pre">GPT-2</span></code> 的实现。</p>
+<p><code class="docutils literal notranslate"><span class="pre">GPT-2</span></code> 的训练需要大规模的语料和计算资源，这里就不再从头训练，直接使用 <code class="docutils literal notranslate"><span class="pre">CDial-GPT</span></code> 提供的对话模型来生成对话。
+随后，本文基于这一基础模型，在古装影视对话数据上对模型进行微调，从而实现古装影视风格对话的生成。</p>
+<section id="gpt">
+<h2>基于 <code class="docutils literal notranslate"><span class="pre">GPT</span></code> 的对话引擎<a class="headerlink" href="#gpt" title="永久链接至标题">¶</a></h2>
+<p>这里实现一个 <code class="docutils literal notranslate"><span class="pre">GPTChatEngine</span></code> 对话引擎，并利用 <code class="docutils literal notranslate"><span class="pre">CDial-GPT</span></code> 提供的对话模型来生成对话。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">import</span> <span class="nn">random</span>
+<span class="kn">from</span> <span class="nn">itertools</span> <span class="kn">import</span> <span class="n">chain</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">import</span> <span class="nn">torch.nn.functional</span> <span class="k">as</span> <span class="nn">F</span>
+<span class="kn">from</span> <span class="nn">transformers</span> <span class="kn">import</span> <span class="n">OpenAIGPTLMHeadModel</span><span class="p">,</span> <span class="n">GPT2LMHeadModel</span><span class="p">,</span> <span class="n">BertTokenizer</span>
+
+<span class="k">class</span> <span class="nc">GPTChatAgent</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="n">SPECIAL_TOKENS</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;[CLS]&quot;</span><span class="p">,</span> <span class="s2">&quot;[SEP]&quot;</span><span class="p">,</span> <span class="s2">&quot;[PAD]&quot;</span><span class="p">,</span> <span class="s2">&quot;[speaker1]&quot;</span><span class="p">,</span> <span class="s2">&quot;[speaker2]&quot;</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model_path</span><span class="p">,</span> <span class="n">min_len</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">max_len</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span> <span class="n">temperature</span><span class="o">=</span><span class="mf">0.7</span><span class="p">,</span> <span class="n">top_p</span><span class="o">=</span><span class="mf">0.9</span><span class="p">,</span> <span class="n">top_k</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">no_sample</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">&#39;cpu&#39;</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">min_length</span> <span class="o">=</span> <span class="n">min_len</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_length</span> <span class="o">=</span> <span class="n">max_len</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">temperature</span> <span class="o">=</span> <span class="n">temperature</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">top_p</span> <span class="o">=</span> <span class="n">top_p</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">top_k</span> <span class="o">=</span> <span class="n">top_k</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">no_sample</span> <span class="o">=</span> <span class="n">no_sample</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">device</span> <span class="o">=</span> <span class="n">device</span>
+
+        <span class="c1"># Init models</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tokenizer</span> <span class="o">=</span> <span class="n">BertTokenizer</span><span class="o">.</span><span class="n">from_pretrained</span><span class="p">(</span><span class="n">model_path</span><span class="p">,</span> <span class="n">do_lower_case</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">OpenAIGPTLMHeadModel</span><span class="o">.</span><span class="n">from_pretrained</span><span class="p">(</span><span class="n">model_path</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">eval</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_encode_text</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">text</span><span class="p">):</span>
+        <span class="n">batch_wids</span> <span class="o">=</span> <span class="p">[</span><span class="n">tokenizer</span><span class="o">.</span><span class="n">encode_plus</span><span class="p">(</span><span class="n">text</span><span class="p">,</span> <span class="n">max_length</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">add_special_tokens</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="s2">&quot;input_ids&quot;</span><span class="p">]]</span>
+        <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
+            <span class="n">bert_result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bert_model</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">LongTensor</span><span class="p">(</span><span class="n">batch_wids</span><span class="p">))</span>
+            <span class="k">return</span> <span class="n">bert_result</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_search</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">):</span>
+        <span class="n">encoded_message</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_encode_text</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">encoded_message</span><span class="p">]),</span> <span class="bp">self</span><span class="o">.</span><span class="n">limit</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">results</span>
+
+    <span class="k">def</span> <span class="nf">_top_filtering</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">logits</span><span class="p">,</span> <span class="n">top_k</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">top_p</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=-</span><span class="nb">float</span><span class="p">(</span><span class="s1">&#39;Inf&#39;</span><span class="p">),</span> <span class="n">filter_value</span><span class="o">=-</span><span class="nb">float</span><span class="p">(</span><span class="s1">&#39;Inf&#39;</span><span class="p">)):</span>
+        <span class="sd">&quot;&quot;&quot; Filter a distribution of logits using top-k, top-p (nucleus) and/or threshold filtering</span>
+<span class="sd">            Args:</span>
+<span class="sd">                logits: logits distribution shape (vocabulary size)</span>
+<span class="sd">                top_k: &lt;=0: no filtering, &gt;0: keep only top k tokens with highest probability.</span>
+<span class="sd">                top_p: &lt;=0.0: no filtering, &gt;0.0: keep only a subset S of candidates, where S is the smallest subset</span>
+<span class="sd">                    whose total probability mass is greater than or equal to the threshold top_p.</span>
+<span class="sd">                    In practice, we select the highest probability tokens whose cumulative probability mass exceeds</span>
+<span class="sd">                    the threshold top_p.</span>
+<span class="sd">                threshold: a minimal threshold to keep logits</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="n">logits</span><span class="o">.</span><span class="n">dim</span><span class="p">()</span> <span class="o">==</span> <span class="mi">1</span>  <span class="c1"># Only work for batch size 1 for now - could update but it would obfuscate a bit the code</span>
+        <span class="n">top_k</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">top_k</span><span class="p">,</span> <span class="n">logits</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">top_k</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="c1"># Remove all tokens with a probability less than the last token in the top-k tokens</span>
+            <span class="n">indices_to_remove</span> <span class="o">=</span> <span class="n">logits</span> <span class="o">&lt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">topk</span><span class="p">(</span><span class="n">logits</span><span class="p">,</span> <span class="n">top_k</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="o">...</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span>
+            <span class="n">logits</span><span class="p">[</span><span class="n">indices_to_remove</span><span class="p">]</span> <span class="o">=</span> <span class="n">filter_value</span>
+
+        <span class="k">if</span> <span class="n">top_p</span> <span class="o">&gt;</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="c1"># Compute cumulative probabilities of sorted tokens</span>
+            <span class="n">sorted_logits</span><span class="p">,</span> <span class="n">sorted_indices</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">logits</span><span class="p">,</span> <span class="n">descending</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">cumulative_probabilities</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">F</span><span class="o">.</span><span class="n">softmax</span><span class="p">(</span><span class="n">sorted_logits</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">),</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+
+            <span class="c1"># Remove tokens with cumulative probability above the threshold</span>
+            <span class="n">sorted_indices_to_remove</span> <span class="o">=</span> <span class="n">cumulative_probabilities</span> <span class="o">&gt;</span> <span class="n">top_p</span>
+            <span class="c1"># Shift the indices to the right to keep also the first token above the threshold</span>
+            <span class="n">sorted_indices_to_remove</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">:]</span> <span class="o">=</span> <span class="n">sorted_indices_to_remove</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+            <span class="n">sorted_indices_to_remove</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+
+            <span class="c1"># Back to unsorted indices and set them to -infinity</span>
+            <span class="n">indices_to_remove</span> <span class="o">=</span> <span class="n">sorted_indices</span><span class="p">[</span><span class="n">sorted_indices_to_remove</span><span class="p">]</span>
+            <span class="n">logits</span><span class="p">[</span><span class="n">indices_to_remove</span><span class="p">]</span> <span class="o">=</span> <span class="n">filter_value</span>
+
+        <span class="n">indices_to_remove</span> <span class="o">=</span> <span class="n">logits</span> <span class="o">&lt;</span> <span class="n">threshold</span>
+        <span class="n">logits</span><span class="p">[</span><span class="n">indices_to_remove</span><span class="p">]</span> <span class="o">=</span> <span class="n">filter_value</span>
+
+        <span class="k">return</span> <span class="n">logits</span>
+
+    <span class="k">def</span> <span class="nf">_build_input_from_segments</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">history</span><span class="p">,</span> <span class="n">reply</span><span class="p">,</span> <span class="n">with_eos</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Build a sequence of input from 3 segments: persona, history and last reply &quot;&quot;&quot;</span>
+        <span class="n">bos</span><span class="p">,</span> <span class="n">eos</span><span class="p">,</span> <span class="n">pad</span><span class="p">,</span> <span class="n">speaker1</span><span class="p">,</span> <span class="n">speaker2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tokenizer</span><span class="o">.</span><span class="n">convert_tokens_to_ids</span><span class="p">(</span><span class="n">CDialGPTChatAgent</span><span class="o">.</span><span class="n">SPECIAL_TOKENS</span><span class="p">)</span>
+        <span class="n">sequence</span> <span class="o">=</span> <span class="p">[[</span><span class="n">bos</span><span class="p">]]</span> <span class="o">+</span> <span class="n">history</span> <span class="o">+</span> <span class="p">[</span><span class="n">reply</span> <span class="o">+</span> <span class="p">([</span><span class="n">eos</span><span class="p">]</span> <span class="k">if</span> <span class="n">with_eos</span> <span class="k">else</span> <span class="p">[])]</span>
+        <span class="n">sequence</span> <span class="o">=</span> <span class="p">[</span><span class="n">sequence</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="o">+</span> <span class="p">[[</span><span class="n">speaker2</span> <span class="k">if</span> <span class="n">i</span> <span class="o">%</span> <span class="mi">2</span> <span class="k">else</span> <span class="n">speaker1</span><span class="p">]</span> <span class="o">+</span> <span class="n">s</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">s</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">sequence</span><span class="p">[</span><span class="mi">1</span><span class="p">:])]</span>
+        <span class="n">instance</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">instance</span><span class="p">[</span><span class="s2">&quot;input_ids&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">chain</span><span class="p">(</span><span class="o">*</span><span class="n">sequence</span><span class="p">))</span>
+        <span class="n">instance</span><span class="p">[</span><span class="s2">&quot;token_type_ids&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">bos</span><span class="p">]</span> <span class="o">+</span> <span class="p">[</span><span class="n">speaker2</span> <span class="k">if</span> <span class="n">i</span> <span class="o">%</span> <span class="mi">2</span> <span class="k">else</span> <span class="n">speaker1</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">s</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">sequence</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span>
+                                            <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">s</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">instance</span><span class="p">,</span> <span class="n">sequence</span>
+
+    <span class="k">def</span> <span class="nf">_sample_sequence</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">history</span><span class="p">,</span> <span class="n">current_output</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">special_tokens_ids</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tokenizer</span><span class="o">.</span><span class="n">convert_tokens_to_ids</span><span class="p">(</span><span class="n">CDialGPTChatAgent</span><span class="o">.</span><span class="n">SPECIAL_TOKENS</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">current_output</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">current_output</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">max_length</span><span class="p">):</span>
+            <span class="n">instance</span><span class="p">,</span> <span class="n">sequence</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_input_from_segments</span><span class="p">(</span><span class="n">history</span><span class="p">,</span> <span class="n">current_output</span><span class="p">,</span> <span class="n">with_eos</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="n">input_ids</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">instance</span><span class="p">[</span><span class="s2">&quot;input_ids&quot;</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">long</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+            <span class="n">token_type_ids</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">instance</span><span class="p">[</span><span class="s2">&quot;token_type_ids&quot;</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">long</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+            <span class="n">logits</span><span class="p">,</span> <span class="o">*</span><span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">(</span><span class="n">input_ids</span><span class="p">,</span> <span class="n">token_type_ids</span><span class="o">=</span><span class="n">token_type_ids</span><span class="p">)</span>
+            <span class="n">logits</span> <span class="o">=</span> <span class="n">logits</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="p">:]</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">temperature</span>
+            <span class="n">logits</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_top_filtering</span><span class="p">(</span><span class="n">logits</span><span class="p">,</span> <span class="n">top_k</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">top_k</span><span class="p">,</span> <span class="n">top_p</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">top_p</span><span class="p">)</span>
+            <span class="n">probs</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">softmax</span><span class="p">(</span><span class="n">logits</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+
+            <span class="n">prev</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">topk</span><span class="p">(</span><span class="n">probs</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">no_sample</span> <span class="k">else</span> <span class="n">torch</span><span class="o">.</span><span class="n">multinomial</span><span class="p">(</span><span class="n">probs</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_length</span> <span class="ow">and</span> <span class="n">prev</span><span class="o">.</span><span class="n">item</span><span class="p">()</span> <span class="ow">in</span> <span class="n">special_tokens_ids</span><span class="p">:</span>
+                <span class="k">while</span> <span class="n">prev</span><span class="o">.</span><span class="n">item</span><span class="p">()</span> <span class="ow">in</span> <span class="n">special_tokens_ids</span><span class="p">:</span>
+                    <span class="n">prev</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">multinomial</span><span class="p">(</span><span class="n">probs</span><span class="p">,</span> <span class="n">num_samples</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">prev</span><span class="o">.</span><span class="n">item</span><span class="p">()</span> <span class="ow">in</span> <span class="n">special_tokens_ids</span><span class="p">:</span>
+                <span class="k">break</span>
+            <span class="n">current_output</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">prev</span><span class="o">.</span><span class="n">item</span><span class="p">())</span>
+
+        <span class="k">return</span> <span class="n">current_output</span>
+
+    <span class="k">def</span> <span class="nf">reply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">):</span>
+        <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
+            <span class="n">history</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">tokenizer</span><span class="o">.</span><span class="n">convert_tokens_to_ids</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tokenizer</span><span class="o">.</span><span class="n">tokenize</span><span class="p">(</span><span class="n">message</span><span class="p">))]</span>
+            <span class="n">out_ids</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sample_sequence</span><span class="p">(</span><span class="n">history</span><span class="p">)</span>
+            <span class="n">out_text</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tokenizer</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="n">out_ids</span><span class="p">,</span> <span class="n">skip_special_tokens</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">out_text</span>
+</pre></div>
+</div>
+<p>我们用 <code class="docutils literal notranslate"><span class="pre">CDial-GPT</span></code> 的模型初始化这个对话引擎。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">ConversationSystem</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="c1"># ...</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">chat_engines</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">TemplateChatAgent</span><span class="p">(</span><span class="n">ConversationSystem</span><span class="o">.</span><span class="n">patterns</span><span class="p">),</span>
+            <span class="n">CDialGPTChatAgent</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;\CDial-GPT\models&#39;</span><span class="p">),</span>
+            <span class="n">TemplateChatAgent</span><span class="p">(</span><span class="n">ConversationSystem</span><span class="o">.</span><span class="n">fallback_patterns</span><span class="p">),</span>
+        <span class="p">]</span>
+
+    <span class="c1"># ...</span>
+
+
+<span class="n">conv_system</span> <span class="o">=</span> <span class="n">ConversationSystem</span><span class="p">()</span>
+<span class="n">conv_system</span><span class="o">.</span><span class="n">interact_cli</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>在命令行与对话系统交互，可能得到类似下面的对话。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">User</span><span class="p">:</span><span class="n">你好</span>
+<span class="n">AI</span><span class="p">:</span> <span class="n">你好</span>
+<span class="n">User</span><span class="p">:</span><span class="n">你过来</span>
+<span class="n">AI</span><span class="p">:</span> <span class="n">我</span> <span class="n">在</span> <span class="n">家</span>
+<span class="n">User</span><span class="p">:</span><span class="n">你要到哪里去</span>
+<span class="n">AI</span><span class="p">:</span> <span class="n">还</span> <span class="n">在</span> <span class="n">考</span> <span class="n">虑</span>
+<span class="n">User</span><span class="p">:</span><span class="n">快回去</span>
+<span class="n">AI</span><span class="p">:</span> <span class="n">回</span> <span class="n">哪</span> <span class="n">里</span>
+<span class="n">User</span><span class="p">:</span><span class="n">回你该去的地方</span>
+<span class="n">AI</span><span class="p">:</span> <span class="n">没</span> <span class="n">去</span> <span class="n">过</span>
+</pre></div>
+</div>
+</section>
+<section id="id7">
+<h2>古装影视风格对话生成模型<a class="headerlink" href="#id7" title="永久链接至标题">¶</a></h2>
+<p>在小数据集上微调是预训练模型的主要使用方法。这里在 <code class="docutils literal notranslate"><span class="pre">CDial-GPT</span></code> 模型的基础上，用古装影视对话数据进行微调，从而可以生成风格明显的对话。</p>
+<section id="id8">
+<h3>获取数据<a class="headerlink" href="#id8" title="永久链接至标题">¶</a></h3>
+<p>通过收集古装影视台词，我们得到如下的对话数据，并保存在 <code class="docutils literal notranslate"><span class="pre">tv.json</span></code> 文件中。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span>
+    <span class="s2">&quot;华妃娘娘请皇上移步翊坤宫用膳&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;朕不过去了&quot;</span>
+<span class="p">],</span>
+<span class="p">[</span>
+    <span class="s2">&quot;朕不过去了&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;那皇上的意思是&quot;</span>
+<span class="p">],</span>
+<span class="p">[</span>
+    <span class="s2">&quot;那皇上的意思是&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;朕去瞧瞧皇后&quot;</span>
+<span class="p">]</span>
+</pre></div>
+</div>
+</section>
+<section id="id9">
+<h3>微调训练<a class="headerlink" href="#id9" title="永久链接至标题">¶</a></h3>
+<p>微调训练需要首先获取 <code class="docutils literal notranslate"><span class="pre">CDial-GPT</span></code> 的源代码，并安装相关环境。
+然后运行下面的命令训练模型。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="n">train</span><span class="o">.</span><span class="n">py</span> <span class="o">--</span><span class="n">pretrained</span> <span class="o">--</span><span class="n">model_checkpoint</span> <span class="o">./</span><span class="n">models</span><span class="o">/</span> <span class="o">--</span><span class="n">data_path</span> <span class="o">./</span><span class="n">data</span><span class="o">/</span><span class="n">tv</span><span class="o">.</span><span class="n">json</span> <span class="o">--</span><span class="n">scheduler</span> <span class="n">linear</span>
+</pre></div>
+</div>
+<p>模型训练完成后，我们在对话系统中使用这个模型。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">ConversationSystem</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="c1"># ...</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">chat_engines</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">TemplateChatAgent</span><span class="p">(</span><span class="n">ConversationSystem</span><span class="o">.</span><span class="n">patterns</span><span class="p">),</span>
+            <span class="n">CDialGPTChatAgent</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;\CDial-GPT\model_tv&#39;</span><span class="p">),</span>
+            <span class="n">TemplateChatAgent</span><span class="p">(</span><span class="n">ConversationSystem</span><span class="o">.</span><span class="n">fallback_patterns</span><span class="p">),</span>
+        <span class="p">]</span>
+
+    <span class="c1"># ...</span>
+
+
+<span class="n">conv_system</span> <span class="o">=</span> <span class="n">ConversationSystem</span><span class="p">()</span>
+<span class="n">conv_system</span><span class="o">.</span><span class="n">interact_cli</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>在命令行与对话系统交互，可能得到类似下面的对话。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">User</span><span class="p">:</span><span class="n">你在干什么</span>
+<span class="n">AI</span><span class="p">:</span> <span class="n">我</span> <span class="n">在</span> <span class="n">陪</span> <span class="n">小</span> <span class="n">主</span> <span class="n">说</span> <span class="n">话</span>
+<span class="n">User</span><span class="p">:</span><span class="n">快去干活</span>
+<span class="n">AI</span><span class="p">:</span> <span class="n">等</span> <span class="n">一</span> <span class="n">下</span> <span class="n">再</span> <span class="n">来</span>
+<span class="n">User</span><span class="p">:</span><span class="n">少要多嘴</span>
+<span class="n">AI</span><span class="p">:</span> <span class="n">王</span> <span class="n">爷</span> <span class="n">有</span> <span class="n">什</span> <span class="n">么</span> <span class="n">难</span> <span class="n">言</span> <span class="n">之</span> <span class="n">隐</span>
+<span class="n">User</span><span class="p">:</span><span class="n">休得无理</span>
+<span class="n">AI</span><span class="p">:</span> <span class="n">奴</span> <span class="n">婢</span> <span class="n">知</span> <span class="n">道</span> <span class="n">错</span> <span class="n">了</span>
+</pre></div>
+</div>
+<p>从上面的例子可以看出，微调后的模型对话风格还是非常明显的。
+<code class="docutils literal notranslate"><span class="pre">Controllable</span> <span class="pre">Neural</span> <span class="pre">Text</span> <span class="pre">Generation</span></code> <a class="reference internal" href="reference.html#controllable" id="id10"><span>[Controllable]</span></a> 这篇文章也介绍了控制文本生成的方法。</p>
+</section>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">对话系统实践：快速上手</a></h1>
+
+
+
+
+
+
+
+
+<h3>导航</h3>
+<p class="caption"><span class="caption-text">目录:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="overview.html">概述</a></li>
+<li class="toctree-l1"><a class="reference internal" href="script.html">基于脚本的方法</a></li>
+<li class="toctree-l1"><a class="reference internal" href="retrieval.html">基于检索的方法</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="generative.html">基于生成的方法</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="seq2seq.html">序列到序列生成</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">基于预训练的对话生成</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#gpt">基于 <code class="docutils literal notranslate"><span class="pre">GPT</span></code> 的对话引擎</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id7">古装影视风格对话生成模型</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="reference.html">参考资料</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+  <li><a href="generative.html">基于生成的方法</a><ul>
+      <li>Previous: <a href="seq2seq.html" title="上一章">序列到序列生成</a></li>
+      <li>Next: <a href="reference.html" title="下一章">参考资料</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">快速搜索</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="转向" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2021, Eric.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.0.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/gpt.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

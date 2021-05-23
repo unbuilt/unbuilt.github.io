@@ -1,0 +1,380 @@
+
+<!DOCTYPE html>
+
+<html lang="zh_CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+    <title>基于检索的方法 &#8212; 对话系统实践：快速上手  文档</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css" />
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/translations.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <link rel="index" title="索引" href="genindex.html" />
+    <link rel="search" title="搜索" href="search.html" />
+    <link rel="next" title="基于生成的方法" href="generative.html" />
+    <link rel="prev" title="基于脚本的方法" href="script.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="id1">
+<h1>基于检索的方法<a class="headerlink" href="#id1" title="永久链接至标题">¶</a></h1>
+<p>基于检索的对话生成方法借鉴了信息检索技术，把对话的生成任务改成了从已有的对话库中找出相近的对话作为答案。</p>
+<section id="id2">
+<h2>基本的基于检索的对话引擎<a class="headerlink" href="#id2" title="永久链接至标题">¶</a></h2>
+<p>构建一个基于检索的对话引擎，需要以下工作：</p>
+<ol class="arabic simple">
+<li><p>收集并整理对话数据</p></li>
+<li><p>对对话数据进行索引</p></li>
+<li><p>根据用户输入检索出多个候选问答对</p></li>
+<li><p>对候选回复进行排序，输出回答</p></li>
+</ol>
+<section id="id3">
+<h3>准备对话数据<a class="headerlink" href="#id3" title="永久链接至标题">¶</a></h3>
+<p>目前常用的对话数据的收集方式主要是从通过从论坛、社交媒体等网站爬取用户的发言或者从影视剧中提取台词。
+收集到对话数据，需要进行一系列的清洗以提高数据的质量。</p>
+<p>数据收集用到的技术如网络爬虫。</p>
+<p>这里我们直接使用已经公开的数据集。<cite>CDial-GPT</cite> 开放了较高质量的对话数据，每一个对话片段包含多轮。目前我们只考虑单轮的对话，所以可以把多轮对话处理成一组单轮对话，同时我们过滤掉太长的句子，以及回答对中问答太短的句子。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># 处理对话数据</span>
+<span class="k">def</span> <span class="nf">process_corpus</span><span class="p">(</span><span class="n">datapath</span><span class="p">,</span> <span class="n">output_path</span><span class="p">):</span>
+    <span class="n">f</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">datapath</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span>
+    <span class="n">convs</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+    <span class="n">qas</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">conv</span> <span class="ow">in</span> <span class="n">convs</span><span class="p">:</span>
+        <span class="n">qas</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">conv</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">conv</span><span class="p">[</span><span class="mi">1</span><span class="p">:]))</span>
+
+    <span class="n">qas</span> <span class="o">=</span> <span class="p">[(</span><span class="n">q</span><span class="p">,</span> <span class="n">a</span><span class="p">)</span> <span class="k">for</span> <span class="n">q</span><span class="p">,</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">qas</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">q</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">30</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">30</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">q</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">4</span><span class="p">]</span>
+
+    <span class="n">f</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">output_path</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">qas</span><span class="p">,</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">))</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>经过上述的处理，我们就得到很多问答对。下一步就是对这些回答对进行索引。</p>
+</section>
+<section id="id4">
+<h3>对对话数据建立索引<a class="headerlink" href="#id4" title="永久链接至标题">¶</a></h3>
+<p>我们可以自己建立索引并编写检索算法，也可以利用现有的搜索引擎系统，比如 <code class="docutils literal notranslate"><span class="pre">ElasticSearch</span></code> 等。这里我们使用基于 <code class="docutils literal notranslate"><span class="pre">Python</span></code> 的 <code class="docutils literal notranslate"><span class="pre">Ｗhoosh</span></code> 搜索引擎模块。
+<code class="docutils literal notranslate"><span class="pre">Whoosh</span></code> 建立索引的时候需要一个分词器，我们使用基于 <code class="docutils literal notranslate"><span class="pre">Python</span></code> 的 <code class="docutils literal notranslate"><span class="pre">jieba</span></code> 分词模块。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">whoosh.index</span> <span class="kn">import</span> <span class="n">create_in</span>
+<span class="kn">from</span> <span class="nn">whoosh.fields</span> <span class="kn">import</span> <span class="n">Schema</span><span class="p">,</span> <span class="n">TEXT</span><span class="p">,</span> <span class="n">ID</span>
+<span class="kn">from</span> <span class="nn">jieba.analyse</span> <span class="kn">import</span> <span class="n">ChineseAnalyzer</span>
+
+<span class="k">def</span> <span class="nf">build_index</span><span class="p">(</span><span class="n">datapath</span><span class="p">,</span> <span class="n">index_dir</span><span class="p">):</span>
+    <span class="n">f</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">datapath</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span>
+    <span class="n">qas</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+    <span class="n">analyzer</span> <span class="o">=</span> <span class="n">ChineseAnalyzer</span><span class="p">()</span>
+
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">Schema</span><span class="p">(</span>
+        <span class="n">context</span><span class="o">=</span><span class="n">TEXT</span><span class="p">(</span><span class="n">stored</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">analyzer</span><span class="o">=</span><span class="n">analyzer</span><span class="p">),</span>
+        <span class="n">response</span><span class="o">=</span><span class="n">TEXT</span><span class="p">(</span><span class="n">stored</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
+
+    <span class="n">chat_idx</span> <span class="o">=</span> <span class="n">create_in</span><span class="p">(</span><span class="n">index_dir</span><span class="p">,</span> <span class="n">schema</span><span class="p">)</span>
+    <span class="n">writer</span> <span class="o">=</span> <span class="n">chat_idx</span><span class="o">.</span><span class="n">writer</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">q</span><span class="p">,</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">qas</span><span class="p">:</span>
+        <span class="n">writer</span><span class="o">.</span><span class="n">add_document</span><span class="p">(</span>
+            <span class="n">context</span><span class="o">=</span><span class="n">q</span><span class="p">,</span>
+            <span class="n">response</span><span class="o">=</span><span class="n">a</span><span class="p">)</span>
+    <span class="n">writer</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+<section id="id5">
+<h3>根据用户输入检索出多个相关问答对<a class="headerlink" href="#id5" title="永久链接至标题">¶</a></h3>
+<p>创建好索引之后，我们就可以加载索引并进行检索，这就是 <code class="docutils literal notranslate"><span class="pre">RetrievalChatAgent</span></code> 。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">random</span>
+<span class="kn">from</span> <span class="nn">whoosh.query</span> <span class="kn">import</span> <span class="n">Term</span>
+<span class="kn">from</span> <span class="nn">whoosh.qparser</span> <span class="kn">import</span> <span class="n">QueryParser</span><span class="p">,</span> <span class="n">MultifieldParser</span>
+<span class="kn">from</span> <span class="nn">whoosh.index</span> <span class="kn">import</span> <span class="n">open_dir</span>
+<span class="kn">from</span> <span class="nn">jieba.analyse</span> <span class="kn">import</span> <span class="n">ChineseAnalyzer</span>
+
+<span class="k">class</span> <span class="nc">RetrievalChatAgent</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index_dir</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="mi">5</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">idx</span> <span class="o">=</span> <span class="n">open_dir</span><span class="p">(</span><span class="n">index_dir</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">searcher</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">idx</span><span class="o">.</span><span class="n">searcher</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">parser</span> <span class="o">=</span> <span class="n">QueryParser</span><span class="p">(</span><span class="s2">&quot;context&quot;</span><span class="p">,</span> <span class="n">schema</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">idx</span><span class="o">.</span><span class="n">schema</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">limit</span> <span class="o">=</span> <span class="n">limit</span>
+
+    <span class="k">def</span> <span class="nf">reply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">):</span>
+        <span class="n">query</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parser</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">searcher</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">limit</span><span class="p">)</span>
+        <span class="n">cands</span> <span class="o">=</span> <span class="p">[</span><span class="n">res</span><span class="p">[</span><span class="s1">&#39;response&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">res</span> <span class="ow">in</span> <span class="n">results</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">cands</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">cands</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="s1">&#39;&#39;</span>
+</pre></div>
+</div>
+<p>检索的过程是用输入与索引中的问题进行匹配，返回匹配度最高的问答对。<code class="docutils literal notranslate"><span class="pre">Ｗhoosh</span></code> 检索时使用的匹配方法是 <code class="docutils literal notranslate"><span class="pre">BM25</span></code> 。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">ConversationSystem</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="n">patterns</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="sa">r</span><span class="s1">&#39;你好[吗啊呀]?&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;*&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;你好&#39;</span><span class="p">,</span> <span class="s1">&#39;嗨&#39;</span><span class="p">]}),</span>
+        <span class="p">(</span><span class="sa">r</span><span class="s1">&#39;你是男是女&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;*&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;你觉得呢&#39;</span><span class="p">,</span> <span class="s1">&#39;你呢&#39;</span><span class="p">]}),</span>
+        <span class="p">(</span><span class="sa">r</span><span class="s1">&#39;你是谁&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;*&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;我是一个AI&#39;</span><span class="p">,</span> <span class="s1">&#39;我是个机器人&#39;</span><span class="p">]}),</span>
+        <span class="p">(</span><span class="sa">r</span><span class="s1">&#39;你(多大|几岁)[吗啊呀]?&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;*&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;我还年轻&#39;</span><span class="p">,</span> <span class="s1">&#39;这是个秘密&#39;</span><span class="p">]}),</span>
+        <span class="p">(</span><span class="sa">r</span><span class="s1">&#39;你在(哪里|哪儿|什么地方)&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;*&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;我在云端，你在哪儿&#39;</span><span class="p">,</span> <span class="s1">&#39;我在你的身边，你在哪里呢&#39;</span><span class="p">]}),</span>
+        <span class="p">(</span><span class="sa">r</span><span class="s1">&#39;我是(?P&lt;Gender&gt;[男女])(的|生|人)&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;男&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;帅哥好&#39;</span><span class="p">],</span> <span class="s1">&#39;女&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;美女好&#39;</span><span class="p">]}),</span>
+        <span class="p">(</span><span class="sa">r</span><span class="s1">&#39;我也?在(?P&lt;Place&gt;.+)&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;北京&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;北京现在很冷吧&#39;</span><span class="p">],</span> <span class="s1">&#39;*&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;你在</span><span class="si">{Place}</span><span class="s1">？&#39;</span><span class="p">]})</span>
+    <span class="p">]</span>
+
+    <span class="n">fallback_patterns</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="sa">r</span><span class="s1">&#39;.*&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;*&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;你说什么&#39;</span><span class="p">,</span> <span class="s1">&#39;不好意思，没明白你的话&#39;</span><span class="p">]})</span>
+    <span class="p">]</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">chat_engines</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">TemplateChatAgent</span><span class="p">(</span><span class="n">ConversationSystem</span><span class="o">.</span><span class="n">patterns</span><span class="p">),</span>
+            <span class="n">RetrievalChatAgent</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">),</span>
+            <span class="n">TemplateChatAgent</span><span class="p">(</span><span class="n">ConversationSystem</span><span class="o">.</span><span class="n">fallback_patterns</span><span class="p">),</span>
+        <span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">reply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">uid</span><span class="p">,</span> <span class="n">message</span><span class="p">):</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+        <span class="k">for</span> <span class="n">chat_engine</span> <span class="bp">self</span><span class="o">.</span><span class="n">chat_engines</span><span class="p">:</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">chat_engine</span><span class="o">.</span><span class="n">reply</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">result</span><span class="p">:</span>
+                <span class="k">break</span>
+
+        <span class="k">return</span> <span class="n">result</span>
+
+    <span class="k">def</span> <span class="nf">interact_cli</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="n">query</span> <span class="o">=</span> <span class="nb">input</span><span class="p">(</span><span class="s1">&#39;User:&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">query</span> <span class="o">==</span> <span class="s1">&#39;Q&#39;</span><span class="p">:</span>
+                <span class="k">break</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;AI:&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">reply</span><span class="p">(</span><span class="s1">&#39;UserA&#39;</span><span class="p">,</span> <span class="n">query</span><span class="p">))</span>
+
+<span class="n">conv_system</span> <span class="o">=</span> <span class="n">ConversationSystem</span><span class="p">()</span>
+<span class="n">conv_system</span><span class="o">.</span><span class="n">interact_cli</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>运行后可以得到下面的对话。可以看出，对话系统可以开始天南海北的瞎聊了。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>User: 你好
+AI: 嗨
+User: 你是谁
+AI: 我是个机器人
+User: 你喜欢什么运动
+AI: 麻烦 出个 选择题 ~ 好哇 ? &gt; ~
+User: 你喜欢运动吗
+AI: 逛街 ， 吃饭 ， 简称 ： 逛 吃 逛 吃 逛 吃
+User: 除了吃就知道吃
+AI: 我 就是 这么 没出息 啊
+User: 给AI丢脸
+AI: 你说什么
+User: 说你笨
+AI: 真的 吗
+User: 今天天气不错
+AI: 是 的 有点 热
+User: 我想去吃火锅
+AI: 我 想 在家 吃火锅
+</pre></div>
+</div>
+<p>这里取到检索结果后，直接随机选取了一个回复作为输出。一种更好的方法是对初步检索出的结果作进一步排序后再选择一个作为回复。</p>
+</section>
+<section id="id6">
+<h3>候选回复对进行排序<a class="headerlink" href="#id6" title="永久链接至标题">¶</a></h3>
+<p>排序可以使用各种文本匹配的方法，除 <code class="docutils literal notranslate"><span class="pre">BM25</span></code> 外，还有编辑距离、最长公共字串、词向量相似度等很多方法。文本匹配是自然语言处理中的基本问题。</p>
+<p>这里既可以基于用户输入对索引问答对中的问题进行排序，也可以基于用户的输入对问答对中的答案进行排序并选择。
+<cite>Deep Chit-Chat: Deep Learning for ChatBots</cite> <a class="reference internal" href="reference.html#tutorial" id="id7"><span>[Tutorial]</span></a> 介绍了深度学习在聊天机器人中的应用，特别是各种答案匹配的方法。</p>
+</section>
+</section>
+<section id="id8">
+<h2>基于语义的索引及检索<a class="headerlink" href="#id8" title="永久链接至标题">¶</a></h2>
+<p>上面的检索系统在索引问答对时使用的是词，所以在检索时也只能找出包含输入中的词的问答对。对于语义相同但词语不同的句子并不能检索出来。
+比如输入 <code class="docutils literal notranslate"><span class="pre">我很伤心</span></code>，是不能检索出 <code class="docutils literal notranslate"><span class="pre">我很难过</span></code> 。</p>
+<p>基于语义的检索可以解决这个问题。语义检索系统索引和检索的对象是向量，需要在索引前对问答对进行编码转换成一个向量，在检索前把输入编码为一个向量。由于语义相似的词的向量相近，所以可以检索出字面不同但意思相近的问答对。</p>
+<p>除了一开始的收集问答对数据以及最后的排序外，基于语义的检索需要做以下工作：</p>
+<ol class="arabic simple">
+<li><p>对问答对进行编码，把问答转换成一个向量</p></li>
+<li><p>对向量进行索引</p></li>
+<li><p>在检索时，先对输入编码为向量</p></li>
+<li><p>对向量进行检索，得到候选问答对</p></li>
+<li><p>对候选回复进行排序，输出回答</p></li>
+</ol>
+<p>下面实现一个 <code class="docutils literal notranslate"><span class="pre">SemanticChatAgent</span></code>，使用 <code class="docutils literal notranslate"><span class="pre">Transformer</span></code> 包里的 <code class="docutils literal notranslate"><span class="pre">BertModel</span></code> 对句子进行编码，得到表示句子语义的向量。
+可以对向量进行索引及检索的工具有 <code class="docutils literal notranslate"><span class="pre">KD-Tree</span></code>, <a class="reference external" href="https://github.com/spotify/annoy">annoy</a> 等，这里使用 <a class="reference external" href="https://github.com/facebookresearch/faiss">faiss</a> 进行语义索引及查询。
+问答数据使用前面已经处理好的问答对。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">import</span> <span class="nn">random</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">from</span> <span class="nn">transformers</span> <span class="kn">import</span> <span class="n">BertTokenizer</span><span class="p">,</span> <span class="n">BertModel</span>
+<span class="kn">from</span> <span class="nn">tqdm</span> <span class="kn">import</span> <span class="n">tqdm</span>
+
+<span class="kn">import</span> <span class="nn">faiss</span>
+
+<span class="k">class</span> <span class="nc">SemanticChatAgent</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="mi">10</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">limit</span> <span class="o">=</span> <span class="n">limit</span>
+
+        <span class="c1"># Init models</span>
+        <span class="n">model_name</span> <span class="o">=</span> <span class="s1">&#39;bert-base-chinese&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tokenizer</span> <span class="o">=</span> <span class="n">BertTokenizer</span><span class="o">.</span><span class="n">from_pretrained</span><span class="p">(</span><span class="n">model_name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bert_model</span> <span class="o">=</span> <span class="n">BertModel</span><span class="o">.</span><span class="n">from_pretrained</span><span class="p">(</span><span class="n">model_name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bert_model</span><span class="o">.</span><span class="n">eval</span><span class="p">()</span>
+
+        <span class="c1"># Load data</span>
+        <span class="n">f</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">qas</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+        <span class="c1"># Encode data</span>
+        <span class="n">encoded_qs</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">q</span><span class="p">,</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">tqdm</span><span class="p">(</span><span class="n">qas</span><span class="p">):</span>
+            <span class="n">encoded_qs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_encode_text</span><span class="p">(</span><span class="n">q</span><span class="p">))</span>
+
+        <span class="c1"># Build index</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dimension</span> <span class="o">=</span> <span class="mi">768</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="n">faiss</span><span class="o">.</span><span class="n">IndexFlatL2</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dimension</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">encoded_qs</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">_encode_text</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">text</span><span class="p">):</span>
+        <span class="n">batch_wids</span> <span class="o">=</span> <span class="p">[</span><span class="n">tokenizer</span><span class="o">.</span><span class="n">encode_plus</span><span class="p">(</span><span class="n">text</span><span class="p">,</span> <span class="n">max_length</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">add_special_tokens</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="s2">&quot;input_ids&quot;</span><span class="p">]]</span>
+        <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
+            <span class="n">bert_result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bert_model</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">LongTensor</span><span class="p">(</span><span class="n">batch_wids</span><span class="p">))</span>
+            <span class="k">return</span> <span class="n">bert_result</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_search</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">):</span>
+        <span class="n">encoded_message</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_encode_text</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">encoded_message</span><span class="p">]),</span> <span class="bp">self</span><span class="o">.</span><span class="n">limit</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">results</span>
+
+    <span class="k">def</span> <span class="nf">reply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">):</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_search</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+        <span class="n">candidates</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">qas</span><span class="p">[</span><span class="n">idx</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="n">results</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">]]</span>
+
+        <span class="k">return</span> <span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">candidates</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>实例化一个 <code class="docutils literal notranslate"><span class="pre">SemanticChatAgent</span></code>，输入 <code class="docutils literal notranslate"><span class="pre">我好难过</span></code>，可能会得到 <code class="docutils literal notranslate"><span class="pre">快</span> <span class="pre">来</span> <span class="pre">抱抱</span> <span class="pre">我</span></code> 、<code class="docutils literal notranslate"><span class="pre">不要</span> <span class="pre">难过</span> <span class="pre">，</span> <span class="pre">不要</span> <span class="pre">烦</span></code> 等回复。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">agent</span> <span class="o">=</span> <span class="n">SemanticChatAgent</span><span class="p">(</span><span class="s1">&#39;C:\Works\data\seq2seq\LCCC-base_train.seq2seq.json&#39;</span><span class="p">)</span>
+<span class="n">agent</span><span class="o">.</span><span class="n">reply</span><span class="p">(</span><span class="s1">&#39;我好难过&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>如果查看搜索结果的话，可以发现不仅检索出了 <code class="docutils literal notranslate"><span class="pre">难过</span></code>，还找到了包含 <code class="docutils literal notranslate"><span class="pre">不开心</span></code> 、 <code class="docutils literal notranslate"><span class="pre">真伤感</span></code> 等词的句子。这就是基于语义检索的优势。
+同时也可以看到，语义检索在提高召回率的同时，也降低了精确率，所以基于用户输入对回答句子进行排序的功能就很重要了。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="mf">9.487286</span> <span class="p">[</span><span class="s1">&#39;只是 好 难过&#39;</span><span class="p">,</span> <span class="s1">&#39;心塞 的 时间 已经 过 了&#39;</span><span class="p">]</span>
+<span class="mf">10.490826</span> <span class="p">[</span><span class="s1">&#39;我 不 开心&#39;</span><span class="p">,</span> <span class="s1">&#39;快 来 抱抱 我&#39;</span><span class="p">]</span>
+<span class="mf">10.844768</span> <span class="p">[</span><span class="s1">&#39;心疼 脸上 的 伤&#39;</span><span class="p">,</span> <span class="s1">&#39;小 团子 那个 好像 是 痘痘 哈哈哈哈&#39;</span><span class="p">]</span>
+<span class="mf">11.026273</span> <span class="p">[</span><span class="s1">&#39;我 想 多 了&#39;</span><span class="p">,</span> <span class="s1">&#39;加班加点 冲锋陷阵 年终 决算 都 半夜三更 走&#39;</span><span class="p">]</span>
+<span class="mf">11.116728</span> <span class="p">[</span><span class="s1">&#39;其实 很 难过&#39;</span><span class="p">,</span> <span class="s1">&#39;不要 难过 ， 不要 烦&#39;</span><span class="p">]</span>
+<span class="mf">11.802321</span> <span class="p">[</span><span class="s1">&#39;妹妹 真 伤感&#39;</span><span class="p">,</span> <span class="s1">&#39;对不起&#39;</span><span class="p">]</span>
+<span class="mf">12.01674</span> <span class="p">[</span><span class="s1">&#39;今天 放 的 我 好 难过&#39;</span><span class="p">,</span> <span class="s1">&#39;我 已经 没看 了 ， 知道 后面 会虐 ， 不想 看 了&#39;</span><span class="p">]</span>
+<span class="mf">12.237868</span> <span class="p">[</span><span class="s1">&#39;嗯 ， 我 生气 我 难过&#39;</span><span class="p">,</span> <span class="s1">&#39;摸摸 ， 我们 要 让 自己 变得 强大&#39;</span><span class="p">]</span>
+<span class="mf">13.057215</span> <span class="p">[</span><span class="s1">&#39;我 快乐 好久 了&#39;</span><span class="p">,</span> <span class="s1">&#39;那 是因为 你 没 回去 吧 ？&#39;</span><span class="p">]</span>
+<span class="mf">13.074891</span> <span class="p">[</span><span class="s1">&#39;想太多 了&#39;</span><span class="p">,</span> <span class="s1">&#39;那 就是 伤不起&#39;</span><span class="p">]</span>
+</pre></div>
+</div>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">对话系统实践：快速上手</a></h1>
+
+
+
+
+
+
+
+
+<h3>导航</h3>
+<p class="caption"><span class="caption-text">目录:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="overview.html">概述</a></li>
+<li class="toctree-l1"><a class="reference internal" href="script.html">基于脚本的方法</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">基于检索的方法</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#id2">基本的基于检索的对话引擎</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id3">准备对话数据</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id4">对对话数据建立索引</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id5">根据用户输入检索出多个相关问答对</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id6">候选回复对进行排序</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#id8">基于语义的索引及检索</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="generative.html">基于生成的方法</a></li>
+<li class="toctree-l1"><a class="reference internal" href="reference.html">参考资料</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="script.html" title="上一章">基于脚本的方法</a></li>
+      <li>Next: <a href="generative.html" title="下一章">基于生成的方法</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">快速搜索</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="转向" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2021, Eric.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.0.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/retrieval.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

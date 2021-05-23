@@ -1,0 +1,46 @@
+基于生成的方法
+===============================================
+
+基于检索产生回复的方法只能用已有的句子进行对话。如果找不到合适的句子，对话系统就只能回复一些固定的句子表示不知道应该怎么回复。
+
+随着深度学习在自然语言处理的应用方法层出不穷，就有了生成的方法。
+
+
+.. toctree::
+   :maxdepth: 2
+   :caption: 目录:
+
+   Seq2SeqConversation
+   seq2seq
+
+
+   
+
+基于预训练的对话生成
+----------------------
+
+GPT-2展示了强大的文本生成能力。
+
+Dialo-GPT扩展了GPT-2，用于对话生成。
+
+CDial-GPT发布了中文数据集，并提供了模型。
+
+
+
+
+References
+-----------------
+
+1. Sequence to Sequence Learning
+with Neural Networks: https://papers.nips.cc/paper/2014/file/a14ac55a4f27472c5d894ec1c3c743d2-Paper.pdf
+2. NEURAL MACHINE TRANSLATION
+BY JOINTLY LEARNING TO ALIGN AND TRANSLATE: https://arxiv.org/pdf/1409.0473.pdf
+3. DIALOGPT : Large-Scale Generative Pre-training
+for Conversational Response Generation: https://arxiv.org/pdf/1911.00536.pdf
+4. CDial-GPT/A Large-Scale Chinese Short-Text Conversation
+Dataset: https://arxiv.org/pdf/2008.03946.pdf
+5. CHATBOT TUTORIAL https://pytorch.org/tutorials/beginner/chatbot_tutorial.html
+
+https://lilianweng.github.io/lil-log/2021/01/02/controllable-neural-text-generation.html
+https://zhuanlan.zhihu.com/p/115076102
+

@@ -1,0 +1,155 @@
+
+<!DOCTYPE html>
+
+<html lang="zh_CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+    <title>基于生成的方法 &#8212; 对话系统实践  文档</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css" />
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/translations.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <link rel="index" title="索引" href="genindex.html" />
+    <link rel="search" title="搜索" href="search.html" />
+    <link rel="next" title="序列到序列对话生成" href="Seq2SeqConversation.html" />
+    <link rel="prev" title="基于检索的方法" href="retrieval.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="id1">
+<h1>基于生成的方法<a class="headerlink" href="#id1" title="永久链接至标题">¶</a></h1>
+<p>基于检索产生回复的方法只能用已有的句子进行对话。如果找不到合适的句子，对话系统就只能回复一些固定的句子表示不知道应该怎么回复。</p>
+<p>随着深度学习在自然语言处理的应用方法层出不穷，就有了生成的方法。</p>
+<div class="toctree-wrapper compound">
+<p class="caption"><span class="caption-text">目录:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="Seq2SeqConversation.html">序列到序列对话生成</a></li>
+<li class="toctree-l1"><a class="reference internal" href="seq2seq.html">序列到序列生成</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="seq2seq.html#id2">循环神经网络</a></li>
+<li class="toctree-l2"><a class="reference internal" href="seq2seq.html#lstm">基于LSTM的序列到序列对话生成</a></li>
+<li class="toctree-l2"><a class="reference internal" href="seq2seq.html#id10">解码采样策略</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<section id="id2">
+<h2>基于预训练的对话生成<a class="headerlink" href="#id2" title="永久链接至标题">¶</a></h2>
+<p>GPT-2展示了强大的文本生成能力。</p>
+<p>Dialo-GPT扩展了GPT-2，用于对话生成。</p>
+<p>CDial-GPT发布了中文数据集，并提供了模型。</p>
+</section>
+<section id="references">
+<h2>References<a class="headerlink" href="#references" title="永久链接至标题">¶</a></h2>
+<p>1. Sequence to Sequence Learning
+with Neural Networks: <a class="reference external" href="https://papers.nips.cc/paper/2014/file/a14ac55a4f27472c5d894ec1c3c743d2-Paper.pdf">https://papers.nips.cc/paper/2014/file/a14ac55a4f27472c5d894ec1c3c743d2-Paper.pdf</a>
+2. NEURAL MACHINE TRANSLATION
+BY JOINTLY LEARNING TO ALIGN AND TRANSLATE: <a class="reference external" href="https://arxiv.org/pdf/1409.0473.pdf">https://arxiv.org/pdf/1409.0473.pdf</a>
+3. DIALOGPT : Large-Scale Generative Pre-training
+for Conversational Response Generation: <a class="reference external" href="https://arxiv.org/pdf/1911.00536.pdf">https://arxiv.org/pdf/1911.00536.pdf</a>
+4. CDial-GPT/A Large-Scale Chinese Short-Text Conversation
+Dataset: <a class="reference external" href="https://arxiv.org/pdf/2008.03946.pdf">https://arxiv.org/pdf/2008.03946.pdf</a>
+5. CHATBOT TUTORIAL <a class="reference external" href="https://pytorch.org/tutorials/beginner/chatbot_tutorial.html">https://pytorch.org/tutorials/beginner/chatbot_tutorial.html</a></p>
+<p><a class="reference external" href="https://lilianweng.github.io/lil-log/2021/01/02/controllable-neural-text-generation.html">https://lilianweng.github.io/lil-log/2021/01/02/controllable-neural-text-generation.html</a>
+<a class="reference external" href="https://zhuanlan.zhihu.com/p/115076102">https://zhuanlan.zhihu.com/p/115076102</a></p>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">对话系统实践</a></h1>
+
+
+
+
+
+
+
+
+<h3>导航</h3>
+<p class="caption"><span class="caption-text">目录:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="overview.html">概述</a></li>
+<li class="toctree-l1"><a class="reference internal" href="script.html">基于脚本的方法</a></li>
+<li class="toctree-l1"><a class="reference internal" href="retrieval.html">基于检索的方法</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">基于生成的方法</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Seq2SeqConversation.html">序列到序列对话生成</a></li>
+<li class="toctree-l2"><a class="reference internal" href="seq2seq.html">序列到序列生成</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id2">基于预训练的对话生成</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#references">References</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="reference.html">参考资料</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="retrieval.html" title="上一章">基于检索的方法</a></li>
+      <li>Next: <a href="Seq2SeqConversation.html" title="下一章">序列到序列对话生成</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">快速搜索</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="转向" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2021, Eric.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.0.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/generation.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
